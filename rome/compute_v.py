@@ -10,6 +10,8 @@ from util import nethook
 
 from .rome_hparams import ROMEHyperParams
 
+OPTIMIZATION_HISTORY = []
+
 
 def compute_v(
     model: AutoModelForCausalLM,
@@ -93,6 +95,9 @@ def compute_v(
     nethook.set_requires_grad(False, model)
 
     # Execute optimization
+    global OPTIMIZATION_HISTORY
+    OPTIMIZATION_HISTORY = []
+
     for it in range(hparams.v_num_grad_steps):
         opt.zero_grad()
 
@@ -142,11 +147,22 @@ def compute_v(
         )
         # weight_decay = hparams.v_weight_decay * torch.norm(delta) ** 2
         loss = nll_loss + kl_loss + weight_decay
+        
+        avg_prob = torch.exp(-nll_loss_each).mean().item()
         print(
             f"loss {np.round(loss.item(), 3)} = {np.round(nll_loss.item(), 3)} + {np.round(kl_loss.item(), 3)} + {np.round(weight_decay.item(), 3)} "
             f"avg prob of [{request['target_new']['str']}] "
-            f"{torch.exp(-nll_loss_each).mean().item()}"
+            f"{avg_prob}"
         )
+
+        OPTIMIZATION_HISTORY.append({
+            "loss": loss.item(),
+            "nll_loss": nll_loss.item(),
+            "kl_loss": kl_loss.item(),
+            "weight_decay": weight_decay.item(),
+            "prob": avg_prob
+        })
+
         if loss < 5e-2:
             break
 

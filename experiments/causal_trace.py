@@ -472,7 +472,7 @@ class ModelAndTokenizer:
         self.layer_names = [
             n
             for n, m in model.named_modules()
-            if (re.match(r"^(transformer|gpt_neox)\.(h|layers)\.\d+$", n))
+            if (re.match(r"^(transformer|gpt_neox|model)\.(h|layers)\.\d+$", n)) # 書き換え
         ]
         self.num_layers = len(self.layer_names)
 
@@ -495,6 +495,15 @@ def layername(model, num, kind=None):
         if kind == "attn":
             kind = "attention"
         return f'gpt_neox.layers.{num}{"" if kind is None else "." + kind}'
+    if "Llama" in model.__class__.__name__:
+        if kind == "embed":
+            return "model.embed_tokens"
+        if kind == "attn":
+            return f"model.layers.{num}.self_attn"
+        if kind == "mlp":
+            return f"model.layers.{num}.mlp"
+        return f"model.layers.{num}"
+
     assert False, "unknown transformer structure"
 
 
