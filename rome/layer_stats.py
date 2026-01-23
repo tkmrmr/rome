@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import sys
 
 import torch
 from datasets import load_dataset
@@ -93,18 +94,32 @@ def layer_stats(
     """
 
     def get_ds():
-        raw_ds = load_dataset(
-            ds_name,
-            dict(wikitext="wikitext-103-raw-v1", wikipedia="20200501.en")[ds_name],
-        )
-        maxlen = model.config.n_positions
+        try:
+            if ds_name == "wikipedia":
+                raw_ds = load_dataset("wikimedia/wikipedia", "20231101.en", split="train")
+            elif ds_name == "wikipedia-ja":
+                raw_ds = load_dataset("wikimedia/wikipedia", "20231101.ja", split="train")
+            elif ds_name == "wikitext":
+                raw_ds = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
+            else:
+                raise ValueError(f"Unknown dataset: {ds_name}")
+        except Exception as e:
+            print(f"Failed to load {ds_name}: {e}")
+            sys.exit(1)
+        
+        maxlen = getattr(model.config, 'n_positions', None) or getattr(model.config, 'max_position_embeddings', 2048)
         if batch_tokens is not None and batch_tokens < maxlen:
             maxlen = batch_tokens
-        return TokenizedDataset(raw_ds["train"], tokenizer, maxlen=maxlen)
+        return TokenizedDataset(raw_ds, tokenizer, maxlen=maxlen)
 
     # Continue with computation of statistics
     batch_size = 100  # Examine this many dataset texts at once
-    npos = model.config.n_positions
+    if hasattr(model.config, 'n_positions'): # GPT-2系
+        npos = model.config.n_positions
+    elif hasattr(model.config, 'max_position_embeddings'): # LLaMA系
+        npos = model.config.max_position_embeddings
+    else:
+        npos = 2048
     if batch_tokens is None:
         batch_tokens = npos * 3  # Sort and divide into batches with this many tokens
     if precision is None:
@@ -119,6 +134,7 @@ def layer_stats(
     stats_dir = Path(stats_dir)
     file_extension = f"{model_name}/{ds_name}_stats/{layer_name}_{precision}_{'-'.join(sorted(to_collect))}{size_suffix}.npz"
     filename = stats_dir / file_extension
+    print(f"Loading stats from: {filename}")
 
     if not filename.exists() and download:
         remote_url = f"{REMOTE_ROOT_URL}/data/stats/{file_extension}"
