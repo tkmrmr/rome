@@ -105,7 +105,7 @@ def generate_fast(
         while input_ids.size(1) < max_out_len:  # while not exceeding max output length
             model_out = model(
                 input_ids=input_ids[:, cur_context],
-                attention_mask=attention_mask[:, cur_context],
+                attention_mask=attention_mask[:, :cur_context.stop], # 過去から現在までのすべてのマスクを渡す(transformersの最新の仕様に合わせて)
                 past_key_values=past_key_values,
                 use_cache=True,
             )
@@ -146,7 +146,7 @@ def generate_fast(
 
             cur_context = slice(cur_context.stop, cur_context.stop + 1)
 
-    txt = [tok.decode(x) for x in input_ids.detach().cpu().numpy().tolist()]
+    txt = [tok.decode(x, skip_special_tokens=True, clean_up_tokenization_spaces=True) for x in input_ids.detach().cpu().numpy().tolist()]
     txt = [
         unicodedata.normalize("NFKD", x)
         .replace("\n\n", " ")
