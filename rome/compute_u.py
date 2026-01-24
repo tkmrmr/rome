@@ -31,7 +31,7 @@ def get_inv_cov(
     global inv_mom2_cache
 
     model_name = model.config._name_or_path.replace("/", "_")
-    key = (model_name, layer_name)
+    key = (model_name, layer_name, mom2_dataset) # データセット名もキャッシュキーに追加
 
     if key not in inv_mom2_cache:
         print(
