@@ -71,7 +71,7 @@ class LogitLens:
 
         with torch.no_grad():
             for layer, (_, t) in enumerate(self.td.items()):
-                cur_out = t.output[0]
+                cur_out = t.output[0] if isinstance(t.output, (tuple, list)) else t.output # Qwen2.5では層出力がタプルではなくテンソルで返る
                 assert (
                     cur_out.size(0) == 1
                 ), "Make sure you're only running LogitLens on single generations only."
