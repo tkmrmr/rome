@@ -95,11 +95,23 @@ def generate_fast(
     input_ids, attention_mask = inp_tok["input_ids"], inp_tok["attention_mask"]
     batch_size = input_ids.size(0)
 
+    # Guard against empty prompts (e.g., empty string) which can yield 0-length sequences.
+    if input_ids.size(1) == 0:
+        fallback_id = tok.eos_token_id if tok.eos_token_id is not None else tok.pad_token_id
+        if fallback_id is None:
+            raise ValueError("Tokenizer has no eos_token_id or pad_token_id set.")
+        input_ids = input_ids.new_full((batch_size, 1), fallback_id)
+        attention_mask = attention_mask.new_ones((batch_size, 1))
+
     # Setup storage of fast generation with attention caches.
     # `cur_context` is used to define the range of inputs that are not yet
     # stored in `past_key_values`. At each step, we are generating the
     # next token for the index at `cur_context.stop + 1`.
-    past_key_values, cur_context = None, slice(0, attention_mask.sum(1).min().item())
+    min_context = int(attention_mask.sum(1).min().item())
+    if min_context == 0:
+        attention_mask[:, 0] = 1
+        min_context = 1
+    past_key_values, cur_context = None, slice(0, min_context)
 
     with torch.no_grad():
         while input_ids.size(1) < max_out_len:  # while not exceeding max output length
