@@ -31,7 +31,15 @@ class LogitLens:
     ):
         self.disabled = disabled
         self.model, self.tok = model, tok
-        self.n_layers = self.model.config.n_layer
+
+        if hasattr(self.model.config, 'n_layer'):
+            self.n_layers = self.model.config.n_layer
+        elif hasattr(self.model.config, 'num_hidden_layers'):
+            self.n_layers = self.model.config.num_hidden_layers
+        elif hasattr(self.model.config, 'n_layers'):
+            self.n_layers = self.model.config.n_layers
+        else:
+            raise AttributeError(f"Cannot determine number of layers for {type(self.model.config)}")
 
         self.lm_head, self.ln_f = (
             nethook.get_module(model, lm_head_module),

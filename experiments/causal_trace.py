@@ -495,7 +495,7 @@ def layername(model, num, kind=None):
         if kind == "attn":
             kind = "attention"
         return f'gpt_neox.layers.{num}{"" if kind is None else "." + kind}'
-    if "Llama" in model.__class__.__name__:
+    if "Llama" or "Gemma" in model.__class__.__name__:
         if kind == "embed":
             return "model.embed_tokens"
         if kind == "attn":
@@ -503,7 +503,6 @@ def layername(model, num, kind=None):
         if kind == "mlp":
             return f"model.layers.{num}.mlp"
         return f"model.layers.{num}"
-
     assert False, "unknown transformer structure"
 
 
