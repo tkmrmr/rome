@@ -107,14 +107,15 @@ def compute_u(
     # Apply inverse second moment adjustment
     u = cur_repr
     if hparams.mom2_adjustment:
-        u = get_inv_cov(
+        inv_cov = get_inv_cov(
             model,
             tok,
             hparams.rewrite_module_tmp.format(layer),
             hparams.mom2_dataset,
             hparams.mom2_n_samples,
             hparams.mom2_dtype,
-        ) @ u.unsqueeze(1)
+        ).to(dtype=u.dtype, device=u.device) # 逆共分散行列をuに合わせてキャスト
+        u = inv_cov @ u.unsqueeze(1)
         u = u.squeeze()
 
     return u / u.norm()

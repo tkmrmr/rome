@@ -41,8 +41,12 @@ def apply_rome_to_model(
 
         with torch.no_grad():
             for w_name, (delta_u, delta_v) in deltas.items():
-                upd_matrix = delta_u.unsqueeze(1) @ delta_v.unsqueeze(0)
                 w = nethook.get_parameter(model, w_name)
+                weight_dtype = w.dtype
+                weight_device = w.device
+                du = delta_u.to(dtype=weight_dtype, device=weight_device) # 重みとdtypeを合わせる
+                dv = delta_v.to(dtype=weight_dtype, device=weight_device) # 重みとdtypeを合わせる
+                upd_matrix = du.unsqueeze(1) @ dv.unsqueeze(0)
                 upd_matrix = upd_matrix_match_shape(upd_matrix, w.shape)
 
                 if return_orig_weights and w_name not in weights_copy:
@@ -114,7 +118,11 @@ def execute_rome(
         with torch.no_grad():
             # Determine correct transposition of delta matrix
             weight_name = f"{hparams.rewrite_module_tmp.format(layer)}.weight"
-            upd_matrix = left_vector.unsqueeze(1) @ right_vector.unsqueeze(0)
+            weight_dtype = weights[weight_name].dtype
+            weight_device = weights[weight_name].device
+            left_vec = left_vector.to(dtype=weight_dtype, device=weight_device) # 重みとdtypeを合わせる
+            right_vec = right_vector.to(dtype=weight_dtype, device=weight_device) # 重みとdtypeを合わせる
+            upd_matrix = left_vec.unsqueeze(1) @ right_vec.unsqueeze(0)
             upd_matrix = upd_matrix_match_shape(upd_matrix, weights[weight_name].shape)
 
             # Update model weights and record desired changes in `delta` variable
