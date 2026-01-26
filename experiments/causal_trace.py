@@ -540,6 +540,9 @@ def plot_hidden_flow(
 
 def plot_trace_heatmap(result, savepdf=None, title=None, xlabel=None, modelname=None):
     differences = result["scores"]
+    # bfloat16 → float32 に変換してから描画
+    if hasattr(differences, "detach"):
+        differences = differences.detach().float().cpu().numpy()
     low_score = result["low_score"]
     answer = result["answer"]
     kind = (
