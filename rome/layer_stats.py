@@ -1,6 +1,5 @@
-import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import torch
 from datasets import load_dataset
@@ -54,7 +53,7 @@ def main():
     for layer_num in args.layers:
         print(
             f"Computing stats for layer {layer_num} of {args.model_name} "
-            f'over {args.sample_size or "all"} samples of {args.dataset}. '
+            f"over {args.sample_size or 'all'} samples of {args.dataset}. "
             "Note, the statistics are collected over the inputs to the second MLP layer, "
             "or equivalently the outputs of the first MLP layer."
         )
@@ -96,9 +95,13 @@ def layer_stats(
     def get_ds():
         try:
             if ds_name == "wikipedia":
-                raw_ds = load_dataset("wikimedia/wikipedia", "20231101.en", split="train")
+                raw_ds = load_dataset(
+                    "wikimedia/wikipedia", "20231101.en", split="train"
+                )
             elif ds_name == "wikipedia-ja":
-                raw_ds = load_dataset("wikimedia/wikipedia", "20231101.ja", split="train")
+                raw_ds = load_dataset(
+                    "wikimedia/wikipedia", "20231101.ja", split="train"
+                )
             elif ds_name == "wikitext":
                 raw_ds = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
             else:
@@ -106,17 +109,20 @@ def layer_stats(
         except Exception as e:
             print(f"Failed to load {ds_name}: {e}")
             sys.exit(1)
-        
-        maxlen = getattr(model.config, 'n_positions', None) or getattr(model.config, 'max_position_embeddings', 2048)
+
+        maxlen = getattr(model.config, "n_positions", None) or getattr(
+            model.config, "max_position_embeddings", 2048
+        )
         if batch_tokens is not None and batch_tokens < maxlen:
             maxlen = batch_tokens
         return TokenizedDataset(raw_ds, tokenizer, maxlen=maxlen)
 
     # Continue with computation of statistics
-    batch_size = 100  # Examine this many dataset texts at once
-    if hasattr(model.config, 'n_positions'): # GPT-2系
+    # batch_size = 100
+    batch_size = 1  # Llama 3.1用
+    if hasattr(model.config, "n_positions"):  # GPT-2系
         npos = model.config.n_positions
-    elif hasattr(model.config, 'max_position_embeddings'): # LLaMA系
+    elif hasattr(model.config, "max_position_embeddings"):  # LLaMA系
         npos = model.config.max_position_embeddings
     else:
         npos = 2048
